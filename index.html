@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Form</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script> <!--A JavaScript library that simplifies DOM manipulation, event handling, and AJAX for consistent cross-browser behavior-->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script><!--A library that enhances <select> elements with features like search and multi-select.-->
+</head>
+<body>
+    <h2>Registration Form</h2>
+    <form id="userForm">
+        <div class="form-group">
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" required>
+            <span class="error" id="firstNameError"></span>
+        </div>
+        <div class="form-group">
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" required>
+            <span class="error" id="lastNameError"></span>
+        </div>
+        <div class="form-group">
+            <label for="address">Address:</label>
+            <textarea id="address" name="address" rows="4" required></textarea>
+            <span class="error" id="addressError"></span>
+        </div>
+        <div class="form-group">
+            <label for="dob">Date of Birth:</label>
+            <input type="date" id="dob" required>
+            <span class="error" id="dobError"></span>
+        </div>
+        <div class="form-group">
+            <label for="age">Age:</label>
+            <input type="text" id="age" readonly>
+        </div>
+        <div class="form-group">
+            <label for="number">Phone Number:</label>
+            <input type="text" id="number" required maxlength="11">
+            <span class="error" id="numberError"></span>
+        </div>
+        <div class="form-group">
+            <label for="country">Country:</label>
+            <select id="country" required class="searchable-dropdown"></select>
+            <span class="error" id="countryError"></span>
+        </div>
+        <div class="form-group">
+            <label>Are you physically challenged?</label>
+            <div class="form-inline">
+            <label><input type="radio" name="physicallyChallenged" value="yes"> Yes</label>
+            <label><input type="radio" name="physicallyChallenged" value="no"> No</label>
+            <span class="error" id="physicallyChallengedError"></span>
+        </div>
+        </div>
+        <div class="form-group" id="justifyGroup" style="display: none;">
+            <label for="justify">Justification:</label>
+            <textarea id="justify" rows="4"></textarea>
+            <span class="error" id="justifyError"></span>
+        </div>
+        <div class="form-group">
+            <label>Hobbies:</label>
+            <label><input type="checkbox" name="hobbies" value="Cricket"> Cricket</label>
+            <label><input type="checkbox" name="hobbies" value="Coding"> Coding</label>
+            <label><input type="checkbox" name="hobbies" value="Learning"> Learning</label>
+            <label><input type="checkbox" name="hobbies" value="Reading"> Reading</label>
+            <span class="error" id="hobbiesError"></span>
+        </div>
+        <div class="form-group">
+            <input type="button" id="saveButton" value="Save">
+            <input type="button" id="updateButton" value="Update" style="display: none;">
+        </div>
+    </form>
+
+    <div class="table-container">
+        <h3>People Info</h3>
+        <table id="userTable" border="1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Address</th>
+                    <th>DOB</th>
+                    <th>Age</th>
+                    <th>Phone</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        $(document).ready(function () { //a jQuery shorthand for ensuring that the code inside it only runs after the entire DOM has been loaded and is ready to be manipulated.
+            let users = []; //Array to store user data
+            let editIndex = -1;//Keeps track of the user being edited. Initialized as -1
+
+            // Fetch country from API 
+            $.get("https://restcountries.com/v3.1/all", function (data) { //a jQuery method to make an HTTP GET request to the provided API endpoint
+                const $countryDropdown = $("#country"); //The $countryDropdown variable allows you to manipulate this dropdown menu dynamically
+                $countryDropdown.append('<option value="">Select Country</option>');//Adds a default placeholder option (Select Country) to the dropdown menu.
+                data.forEach(country => { //Loops through each country object in the data array returned by the API
+                    $countryDropdown.append(`<option value="${country.name.common}">${country.name.common}</option>`);
+                });
+                $(".searchable-dropdown").select2();
+            });
+
+            // Handle Physically Challenged Radio Button
+            $('input[name="physicallyChallenged"]').on('change', function () { //Attaches a change event listener to all radio buttons with the name attribute physicallyChallenged
+                const value = $('input[name="physicallyChallenged"]:checked').val();
+                if (value === "yes") { //Checks if the selected radio button's value is "yes"
+                    $("#justifyGroup").show(); // if yes This allows the user to provide justification by showing it
+                } else {
+                    $("#justifyGroup").hide();// if no The hide() method makes the element invisible but keeps it in the DOM.
+                }
+            });
+
+            // Calculate Age Based on Date of Birth
+            $("#dob").on("change", function () { //This event is triggered whenever the user selects or modifies the date in the DOB field.
+                const birthDate = new Date($(this).val());//Retrieves the value of the selected date from the #dob input field using $(this).val().
+                const today = new Date();//Gets the current date and time as a Date object (today)
+                let age = today.getFullYear() - birthDate.getFullYear(); //Calculates the age by subtracting the birth year (birthDate.getFullYear()) from the current year (today.getFullYear())
+                const monthDiff = today.getMonth() - birthDate.getMonth();//Determines the difference in months between the current date (today.getMonth()) and the birth date (birthDate.getMonth())
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) { //Adjusts the age calculation to account for incomplete birthdays in the current year.
+                //monthDiff < 0: If the current month is before the birth month, the user hasn't had their birthday this year yet, so subtract 1 from the age.monthDiff === 0 && today.getDate() < birthDate.getDate():If the current month is the birth month but the current day is earlier than the birth day, subtract 1 from the age.
+                    age--; //Decrements the age by 1 if the user hasn't had their birthday yet this year.
+                }
+                $("#age").val(age);
+            });
+
+            // Form Validation
+            function validateForm() {
+                let isValid = true; //Initializes a flag variable isValid to true
+                $(".error").text(""); // Clear previous error messages
+
+                const firstName = $("#firstName").val().trim();//Gets the value of the #firstName input field trims the empty spaces 
+                const lastName = $("#lastName").val().trim();//Similarly, gets and trims the value of the #lastName
+                const dob = $("#dob").val();//Retrieves the value of the #dob (date of birth) input field without trimming
+                const country = $("#country").val();//Retrieves the selected value from the #country dropdown.
+                const phoneNumber = $("#number").val().trim();//Gets and trims the value of the #number input field, which represents the phone number.
+                const hobbies = $('input[name="hobbies"]:checked');//Selects all checkboxes with the name hobbies that are currently checked and assigns them to the hobbies variable.
+                const physicallyChallenged = $('input[name="physicallyChallenged"]:checked').val();//Retrieves the value of the selected radio button with the name physicallyChallenged (either yes or no).
+                const justify = $("#justify").val().trim();//Gets and trims the value of the #justify textarea
+
+                // Validate First Name
+                if (!firstName) {
+                    $("#firstNameError").text("This field is mandatory");
+                    isValid = false;
+                }
+
+                // Validate Last Name
+                if (!lastName) {
+                    $("#lastNameError").text("This field is mandatory");
+                    isValid = false;
+                }
+
+                // Validate Address
+                if (!$("#address").val()) {
+                    $("#addressError").text("This field is mandatory");
+                    isValid = false;
+                }
+
+                // Validate DOB
+                if (!dob) {
+                    $("#dobError").text("This field is mandatory");
+                    isValid = false;
+                }
+
+                // Validate Country
+                if (!country) {
+                    $("#countryError").text("This field is mandatory");
+                    isValid = false;
+                }
+
+                // Validate Phone Number
+                if (!/^[+\d\s]+$/.test(phoneNumber)) {
+                    $("#numberError").text("Enter a valid phone number");
+                    isValid = false;
+                }
+
+                // Validate Hobbies
+                if (hobbies.length === 0) {
+                    $("#hobbiesError").text("This field is mandatory");
+                    isValid = false;
+                }
+
+                // Validate Physically Challenged justification
+                if (physicallyChallenged === "yes" && !justify) {
+                    $("#justifyError").text("This field is mandatory");
+                    isValid = false;
+                }
+
+                return isValid;
+            }
+
+            // Render Table
+            function renderTable() {
+                const $tbody = $("#userTable tbody");
+                $tbody.empty();
+                users.forEach((user, index) => {
+                    const hobbies = user.hobbies.join(", ");
+                    const row = `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${user.firstName}</td>
+                            <td>${user.lastName}</td>
+                            <td>${user.address}</td>
+                            <td>${user.dob}</td>
+                            <td>${user.age}</td>
+                            <td>${user.phoneNumber}</td>
+                            <td>
+                                <button class="editButton" data-index="${index}">Edit</button>
+                                <button class="deleteButton" data-index="${index}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    $tbody.append(row);
+                });
+            }
+
+            // Handle Save Button Click
+            $("#saveButton").click(function () {
+                if (validateForm()) {
+                    const user = {
+                        firstName: $("#firstName").val(),
+                        lastName: $("#lastName").val(),
+                        address: $("#address").val(),
+                        dob: $("#dob").val(),
+                        age: $("#age").val(),
+                        phoneNumber: $("#number").val(),
+                        country: $("#country").val(),
+                        hobbies: $('input[name="hobbies"]:checked').map(function () {
+                            return this.value;
+                        }).get(),
+                        physicallyChallenged: $('input[name="physicallyChallenged"]:checked').val(),
+                        justify: $("#justify").val(),
+                    };
+
+                    users.push(user);
+                    alert("Successfully Saved!");
+                    $("#userForm")[0].reset();
+                    renderTable();
+                }
+            });
+
+            // Handle Edit Button Click
+            $(document).on("click", ".editButton", function () { //Sets up an event listener for dynamically created elements with the class .editButton.
+                const index = $(this).data("index");//Retrieves the data-index attribute of the clicked Edit button
+                const user = users[index]; //Retrieves the user's data from the users array at the specified index.
+                $("#firstName").val(user.firstName);//Fills the #firstName input field with the user's first name
+                $("#lastName").val(user.lastName);
+                $("#address").val(user.address);
+                $("#dob").val(user.dob);//Sets the date of birth in the #dob input field.
+                $("#age").val(user.age);//Sets the user's age in the #age input field.
+                $("#number").val(user.phoneNumber);
+                $("#country").val(user.country).trigger("change");
+                user.hobbies.forEach(hobby => {
+                    $(`input[name="hobbies"][value="${hobby}"]`).prop("checked", true);//Finds a checkbox with the name="hobbies" and a matching value attribute and sets it as checked.
+
+                });
+                $('input[name="physicallyChallenged"][value="' + user.physicallyChallenged + '"]').prop('checked', true); //Finds the radio button for physicallyChallenged with a value matching the user's value (yes or no) and marks it as checked.
+                $("#justify").val(user.justify);
+
+                editIndex = index;
+                $("#saveButton").hide();
+                $("#updateButton").show();
+            });
+
+            // Handle Update Button Click
+            $("#updateButton").click(function () {
+                if (validateForm()) {
+                    users[editIndex] = {
+                        firstName: $("#firstName").val(),
+                        lastName: $("#lastName").val(),
+                        address: $("#address").val(),
+                        dob: $("#dob").val(),
+                        age: $("#age").val(),
+                        phoneNumber: $("#number").val(),
+                        country: $("#country").val(),
+                        hobbies: $('input[name="hobbies"]:checked').map(function () {
+                            return this.value;
+                        }).get(),
+                        physicallyChallenged: $('input[name="physicallyChallenged"]:checked').val(),
+                        justify: $("#justify").val(),
+                    };
+
+                    alert("Updated successfully!");
+                    $("#userForm")[0].reset();
+                    renderTable();
+                    $("#saveButton").show();
+                    $("#updateButton").hide();
+                }
+            });
+
+            // Handle Delete Button Click
+            $(document).on("click", ".deleteButton", function () {
+                const index = $(this).data("index");
+                users.splice(index, 1);
+                renderTable();
+                alert("Are you sure to delete the Info!");
+            });
+        });
+    </script>
+</body>
+</html>
